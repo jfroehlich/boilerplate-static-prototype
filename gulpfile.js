@@ -23,20 +23,20 @@ var del = require('del');
 // --- Library methods ---------------------------------------------------------
 
 function pad(n) {
-	return n < 10 ? '0' + n : n; 
+    return n < 10 ? '0' + n : n; 
 }
 
 function getISODateString(date) {
-	return date.getFullYear() +
-		'-' + pad(date.getMonth() + 1) +
-		'-' + pad(date.getDate());
+    return date.getFullYear() +
+        '-' + pad(date.getMonth() + 1) +
+        '-' + pad(date.getDate());
 }
 
 
 // --- Config setup ------------------------------------------------------------
 
 var config = {
-	pkg: require('./package.json'),	
+    pkg: require('./package.json'),    
 };
 
 config.source = {
@@ -65,79 +65,79 @@ config.target = {
 // --- Build Tasks -------------------------------------------------------------
 
 gulp.task('build-scripts', function () {
-	var vendorScriptStream = gulp.src(config.env.vendorScripts);
-	var projectScriptStream = gulp.src(config.env.projectScripts)
-		.pipe(plumber())
-		.pipe(jshint('.jshintrc'))
-		.pipe(jshint.reporter(stylish))
-		.pipe(config.env.compressScripts ? uglify() : gutil.noop());
-	
-	return mergeStream(vendorScriptStream, projectScriptStream)
-		.pipe(plumber())
-		.pipe(order([].concat(config.env.vendorScripts).concat(config.env.projectScripts), {base: process.cwd()}))
-		.pipe(concat('main.js'))
-		.pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> scripts - <%= date %> */\n', {
-			config: config,
-			date: getISODateString(new Date())
-		}))
-		.pipe(gulp.dest(config.target.assets))
-		.pipe(livereload());
+    var vendorScriptStream = gulp.src(config.env.vendorScripts);
+    var projectScriptStream = gulp.src(config.env.projectScripts)
+        .pipe(plumber())
+        .pipe(jshint('.jshintrc'))
+        .pipe(jshint.reporter(stylish))
+        .pipe(config.env.compressScripts ? uglify() : gutil.noop());
+    
+    return mergeStream(vendorScriptStream, projectScriptStream)
+        .pipe(plumber())
+        .pipe(order([].concat(config.env.vendorScripts).concat(config.env.projectScripts), {base: process.cwd()}))
+        .pipe(concat('main.js'))
+        .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> scripts - <%= date %> */\n', {
+            config: config,
+            date: getISODateString(new Date())
+        }))
+        .pipe(gulp.dest(config.target.assets))
+        .pipe(livereload());
 });
 
 gulp.task('build-styles', function () {
-	return gulp.src([config.source.assets + '**/*.scss', '!' + config.source.assets + '**/_*.scss'])
-		.pipe(plumber())
-		.pipe(sass({outputStyle: 'expanded'}))
-		.pipe(config.env.compressStyles ? minifyCSS({keepBreaks: true, mediaMerging: true, sourceMap: true}) : gutil.noop())
-		.pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> styles - <%= date %> */\n', {
-			config: config,
-			date: getISODateString(new Date())
-		}))
-		.pipe(gulp.dest(config.target.assets))
-		.pipe(livereload());
+    return gulp.src([config.source.assets + '**/*.scss', '!' + config.source.assets + '**/_*.scss'])
+        .pipe(plumber())
+        .pipe(sass({outputStyle: 'expanded'}))
+        .pipe(config.env.compressStyles ? minifyCSS({keepBreaks: true, mediaMerging: true, sourceMap: true}) : gutil.noop())
+        .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> styles - <%= date %> */\n', {
+            config: config,
+            date: getISODateString(new Date())
+        }))
+        .pipe(gulp.dest(config.target.assets))
+        .pipe(livereload());
 });
 
 gulp.task('build-static', function () {
-	return gulp.src([config.source.assets + '/**/*.{gif,jpg,png}'])
-		.pipe(plumber())
-		.pipe(changed(config.target.assets))
-		.pipe(gulp.dest(config.target.assets))
-		.pipe(livereload());
+    return gulp.src([config.source.assets + '/**/*.{gif,jpg,png}'])
+        .pipe(plumber())
+        .pipe(changed(config.target.assets))
+        .pipe(gulp.dest(config.target.assets))
+        .pipe(livereload());
 });
 
 gulp.task('build-pages', function () {
-	return gulp.src([config.source.content + '/**/*.md'])
+    return gulp.src([config.source.content + '/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
-		.pipe(gulp.dest(config.target.project))
-		.pipe(livereload());
+        .pipe(gulp.dest(config.target.project))
+        .pipe(livereload());
 });
 
 
 // --- Management Tasks -----------------------------------------------------------
 
 gulp.task('clean', function() {
-	del.sync(config.target.project + '**/*');
+    del.sync(config.target.project + '**/*');
 });
 
 gulp.task('build', ['clean'], function () {
-	return gulp.start('build-static', 'build-styles', 'build-scripts', 'build-pages');
+    return gulp.start('build-static', 'build-styles', 'build-scripts', 'build-pages');
 });
 
 gulp.task('default', function () {
-	return gulp.start('build');
+    return gulp.start('build');
 });
 
 gulp.task('develop', ['build'], function () {
-	if (config.env.name !== 'development') {
-		console.log('Development in production mode is discouraged.');
-		return;
-	}
+    if (config.env.name !== 'development') {
+        console.log('Development in production mode is discouraged.');
+        return;
+    }
 
-	livereload.listen({port: 35729});
+    livereload.listen({port: 35729});
 
-	gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
-	gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
-	gulp.watch(config.source.assets + '**/*.{gif,jpg,png}', ['build-static']);
+    gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
+    gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
+    gulp.watch(config.source.assets + '**/*.{gif,jpg,png}', ['build-static']);
 });
 
 
