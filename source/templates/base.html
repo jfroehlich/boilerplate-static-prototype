@@ -1,22 +1,22 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="utf-8" />
-	<title>{{ title }}</title>
+    <meta charset="utf-8" />
+    <title>{{ title }}</title>
 </head>
 <body>
-	<header>
-		{% block header %}
-		{% endblock %}
-	</header>
-	<main role="main">
-		{% block main %}
-			{{ content|raw }}
-		{% endblock %}	
-	</main>
-	<footer>
-		{% block footer %}
-		{% endblock %}
-	</footer>
+    <header>
+        {% block header %}
+        {% endblock %}
+    </header>
+    <main role="main">
+        {% block main %}
+            {{ content|raw }}
+        {% endblock %}	
+    </main>
+    <footer>
+    {% block footer %}
+        {% endblock %}
+    </footer>
 </body>
 </html>
