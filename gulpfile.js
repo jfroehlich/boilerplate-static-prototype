@@ -19,20 +19,6 @@ var rename = require('gulp-rename');
 var frontMatter = require('gulp-front-matter');
 var del = require('del');
 
-
-// --- Library methods ---------------------------------------------------------
-
-function pad(n) {
-    return n < 10 ? '0' + n : n; 
-}
-
-function getISODateString(date) {
-    return date.getFullYear() +
-        '-' + pad(date.getMonth() + 1) +
-        '-' + pad(date.getDate());
-}
-
-
 // --- Config setup ------------------------------------------------------------
 
 var config = {
@@ -47,6 +33,7 @@ config.source = {
 
 config.env = {
     name: gutil.env.env ? gutil.env.env : "development",
+    debug: gutil.env === "development",
     compressScripts: true,
     compressStyles: true,
     vendorScripts: [],
@@ -60,7 +47,17 @@ config.target = {
     assets: 'builds/' + config.env.name + '/assets/'
 };
 
+// --- Library methods ---------------------------------------------------------
 
+function pad(n) {
+    return n < 10 ? '0' + n : n; 
+}
+
+function getISODateString(date) {
+    return date.getFullYear() +
+        '-' + pad(date.getMonth() + 1) +
+        '-' + pad(date.getDate());
+}
 
 // --- Build Tasks -------------------------------------------------------------
 
@@ -87,7 +84,7 @@ gulp.task('build-scripts', function () {
 gulp.task('build-styles', function () {
     return gulp.src([config.source.assets + '**/*.scss', '!' + config.source.assets + '**/_*.scss'])
         .pipe(plumber())
-        .pipe(sass({outputStyle: 'expanded'}))
+        .pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
         .pipe(config.env.compressStyles ? minifyCSS({keepBreaks: true, mediaMerging: true, sourceMap: true}) : gutil.noop())
         .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> styles - <%= date %> */\n', {
             config: config,
@@ -98,7 +95,7 @@ gulp.task('build-styles', function () {
 });
 
 gulp.task('build-static', function () {
-    return gulp.src([config.source.assets + '/**/*.{gif,jpg,png}'])
+    return gulp.src([config.source.assets + '/**/*.{gif,jpg,png,pdf,woff,ttf,eot}'])
         .pipe(plumber())
         .pipe(changed(config.target.assets))
         .pipe(gulp.dest(config.target.assets))
@@ -111,7 +108,6 @@ gulp.task('build-pages', function () {
         .pipe(gulp.dest(config.target.project))
         .pipe(livereload());
 });
-
 
 // --- Management Tasks -----------------------------------------------------------
 
@@ -137,7 +133,7 @@ gulp.task('develop', ['build'], function () {
 
     gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
     gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
-    gulp.watch(config.source.assets + '**/*.{gif,jpg,png}', ['build-static']);
+    gulp.watch(config.source.assets + '**/*.{gif,jpg,png,pdf,woff,ttf,eot}', ['build-static']);
 });
 
 
