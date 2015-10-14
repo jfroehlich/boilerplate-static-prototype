@@ -18,6 +18,8 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var frontMatter = require('gulp-front-matter');
 var del = require('del');
+var swig = require('swig');
+var through = require('through2');
 
 // --- Config setup ------------------------------------------------------------
 
@@ -31,12 +33,17 @@ config.source = {
     content: 'source/content/'
 };
 
+config.site = require('site.json');
+
+// TODO Move this into an file with environment settings
 config.env = {
     name: gutil.env.env ? gutil.env.env : "development",
     debug: gutil.env === "development",
     compressScripts: true,
     compressStyles: true,
-    vendorScripts: [],
+    vendorScripts: [
+        // config.source.assets + 'vendor/jquery/dist/jquery.min.js'    
+    ],
     projectScripts: [
         config.source.assets + 'main.js'
     ]
@@ -57,6 +64,23 @@ function getISODateString(date) {
     return date.getFullYear() +
         '-' + pad(date.getMonth() + 1) +
         '-' + pad(date.getDate());
+}
+
+// Inspired by http://www.rioki.org/2014/06/09/jekyll-to-gulp.html
+function renderWithTemplate(defaultTemplatePath) {
+    return through.obj(function (file, enc, cb) {
+        var templateFile =  file.page.layout || defaultTemplateFile;
+        var tpl = swig.compileFile(path.join(__dirname, config.source.templates, templateFile));
+        var data = {
+            site: config.site,
+            env: config.env,
+            page: file.page,
+            content: file.contents.toString()
+        };            
+        file.contents = new Buffer(tpl(data), 'utf8');
+        this.push(file);
+        cb();
+    });
 }
 
 // --- Build Tasks -------------------------------------------------------------
@@ -105,6 +129,7 @@ gulp.task('build-static', function () {
 gulp.task('build-pages', function () {
     return gulp.src([config.source.content + '/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
+        .pipe(renderWithTemplate('layouts/page.html'))
         .pipe(gulp.dest(config.target.project))
         .pipe(livereload());
 });
