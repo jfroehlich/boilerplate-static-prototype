@@ -17,6 +17,7 @@ var changed = require('gulp-changed');
 var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var frontMatter = require('gulp-front-matter');
+var connect = require('gulp-connect');
 var del = require('del');
 var swig = require('swig');
 var through = require('through2');
@@ -33,7 +34,7 @@ config.source = {
     content: 'source/content/'
 };
 
-config.site = require('site.json');
+config.site = require('./site.json');
 
 // TODO Move this into an file with environment settings
 config.env = {
@@ -148,17 +149,27 @@ gulp.task('default', function () {
     return gulp.start('build');
 });
 
+gulp.task('serve', function() {
+    if (config.env.name !== 'development') {
+        console.log('Development in production mode is discouraged.');
+        return;
+    }
+    connect.server({
+        port: 8000,
+        root: target.main,
+        livereload: false
+    });
+});
+
 gulp.task('develop', ['build'], function () {
     if (config.env.name !== 'development') {
         console.log('Development in production mode is discouraged.');
         return;
     }
 
-    livereload.listen({port: 35729});
+    livereload({port: 35729, start: true, liveCSS: false, liveJS: false});
 
     gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
     gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
     gulp.watch(config.source.assets + '**/*.{gif,jpg,png,pdf,woff,ttf,eot}', ['build-static']);
 });
-
-
