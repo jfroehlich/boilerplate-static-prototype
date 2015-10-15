@@ -30,9 +30,9 @@ var config = {
 };
 
 config.source = {
-    assets: 'source/assets/',
-    templates: 'source/templates/',
-    content: 'source/content/'
+    assets: 'assets/',
+    templates: 'templates/',
+    content: 'content/'
 };
 
 config.site = require('./site.json');
