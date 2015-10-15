@@ -21,6 +21,7 @@ var connect = require('gulp-connect');
 var del = require('del');
 var swig = require('swig');
 var through = require('through2');
+var path = require('path');
 
 // --- Config setup ------------------------------------------------------------
 
@@ -55,6 +56,11 @@ config.target = {
     assets: 'builds/' + config.env.name + '/assets/'
 };
 
+swig.setDefaults({
+    loader: swig.loaders.fs(path.join(__dirname, config.source.templates)),
+    cache: false
+})
+
 // --- Library methods ---------------------------------------------------------
 
 function pad(n) {
@@ -68,10 +74,10 @@ function getISODateString(date) {
 }
 
 // Inspired by http://www.rioki.org/2014/06/09/jekyll-to-gulp.html
-function renderWithTemplate(defaultTemplatePath) {
+function renderWithTemplate(defaultTemplate) {
     return through.obj(function (file, enc, cb) {
-        var templateFile =  file.page.layout || defaultTemplateFile;
-        var tpl = swig.compileFile(path.join(__dirname, config.source.templates, templateFile));
+        var templateFile =  path.join(__dirname, config.source.templates, file.page.layout || defaultTemplate);
+        var tpl = swig.compileFile(templateFile);
         var data = {
             site: config.site,
             env: config.env,
@@ -131,6 +137,7 @@ gulp.task('build-pages', function () {
     return gulp.src([config.source.content + '/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
         .pipe(renderWithTemplate('layouts/page.html'))
+        .pipe(rename({extname: '.html'}))
         .pipe(gulp.dest(config.target.project))
         .pipe(livereload());
 });
@@ -161,7 +168,7 @@ gulp.task('serve', function() {
     });
 });
 
-gulp.task('develop', ['build'], function () {
+gulp.task('develop', ['build', 'serve'], function () {
     if (config.env.name !== 'development') {
         console.log('Development in production mode is discouraged.');
         return;
@@ -172,4 +179,7 @@ gulp.task('develop', ['build'], function () {
     gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
     gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
     gulp.watch(config.source.assets + '**/*.{gif,jpg,png,pdf,woff,ttf,eot}', ['build-static']);
+
+    gulp.watch(config.source.content + '**/*.md', ['build-pages']);
+    gulp.watch(config.source.templates + '**/*.html', ['build-pages']);
 });

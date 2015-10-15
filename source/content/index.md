@@ -1,4 +1,5 @@
-layout: base.html
+---
+layout: layouts/page.html
 ---
 
 # Welcome to your new site
