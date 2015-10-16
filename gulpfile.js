@@ -18,6 +18,7 @@ var uglify = require('gulp-uglify');
 var rename = require('gulp-rename');
 var frontMatter = require('gulp-front-matter');
 var connect = require('gulp-connect');
+var marked = require('gulp-marked');
 var del = require('del');
 var swig = require('swig');
 var through = require('through2');
@@ -38,11 +39,13 @@ config.source = {
 config.site = require('./site.json');
 
 // TODO Move this into an file with environment settings
+gutil.env.env = gutil.env.env || "development";
 config.env = {
-    name: gutil.env.env ? gutil.env.env : "development",
-    debug: gutil.env === "development",
+    name: gutil.env.env,
+    debug: gutil.env.env === 'development',
     compressScripts: true,
     compressStyles: true,
+    renderOnlyChangedFiles: false,
     vendorScripts: [
         // config.source.assets + 'vendor/jquery/dist/jquery.min.js'
     ],
@@ -53,7 +56,7 @@ config.env = {
 };
 
 config.target = {
-    project: 'builds/' + config.env.name + '/', 
+    project: 'builds/' + config.env.name + '/',
     assets: 'builds/' + config.env.name + '/assets/'
 };
 
@@ -178,7 +181,9 @@ gulp.task('build-static', function () {
 gulp.task('build-posts', function () {
     return gulp.src([config.source.content + '/posts/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
+        .pipe(config.env.renderOnlyChangedFiles ? changed(config.target.project, {extension: '.html'}) : gutil.noop())
         .pipe(collectPosts())
+        .pipe(marked())
         .pipe(renderWithTemplate('layouts/post.html'))
         .pipe(gulp.dest(config.target.project))
 });
@@ -186,8 +191,9 @@ gulp.task('build-posts', function () {
 gulp.task('build-pages', ['build-posts'], function () {
     return gulp.src([config.source.content + '/pages/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
+        .pipe(config.env.renderOnlyChangedFiles ? changed(config.target.project, {extension: '.html'}) : gutil.noop())
+        .pipe(marked())
         .pipe(renderWithTemplate('layouts/page.html'))
-        .pipe(rename({extname: '.html'}))
         .pipe(gulp.dest(config.target.project))
         .pipe(livereload());
 });
@@ -200,9 +206,9 @@ gulp.task('clean', function() {
 
 gulp.task('build', ['clean'], function () {
     return gulp.start(
-        'build-static', 
-        'build-styles', 
-        'build-scripts', 
+        'build-static',
+        'build-styles',
+        'build-scripts',
         'build-pages'
     );
 });
@@ -218,7 +224,7 @@ gulp.task('serve', function() {
     }
     connect.server({
         port: 8000,
-        root: target.main,
+        root: config.target.project,
         livereload: false
     });
 });
@@ -235,6 +241,6 @@ gulp.task('develop', ['build', 'serve'], function () {
     gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
     gulp.watch(config.source.assets + '**/*.{gif,jpg,png,pdf,woff,ttf,eot}', ['build-static']);
 
-    gulp.watch(config.source.content + '**/*.md', ['build-pages']);
-    gulp.watch(config.source.templates + '**/*.html', ['build-pages']);
+    gulp.watch(config.source.content + '**/*.md', ['build-pages', 'build-posts']);
+    gulp.watch(config.source.templates + '**/*.html', ['build-pages', 'build-posts']);
 });
