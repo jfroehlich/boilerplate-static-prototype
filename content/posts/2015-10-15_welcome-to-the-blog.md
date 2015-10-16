@@ -1,8 +1,8 @@
 ---
-title: Welcome to the blog
+headline: Welcome to the blog
 category: general
 tags: [schnick, schnack, schnuck]
 ---
 
-Welcome to the blog
-===============================================================================
+This is your first blog post. Or mine... write your own.
+schnick
