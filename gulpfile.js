@@ -26,7 +26,7 @@ var path = require('path');
 // --- Config setup ------------------------------------------------------------
 
 var config = {
-    pkg: require('./package.json'),    
+    pkg: require('./package.json'),
 };
 
 config.source = {
@@ -44,8 +44,9 @@ config.env = {
     compressScripts: true,
     compressStyles: true,
     vendorScripts: [
-        // config.source.assets + 'vendor/jquery/dist/jquery.min.js'    
+        // config.source.assets + 'vendor/jquery/dist/jquery.min.js'
     ],
+    defaultCategory: "general",
     projectScripts: [
         config.source.assets + 'main.js'
     ]
@@ -64,7 +65,7 @@ swig.setDefaults({
 // --- Library methods ---------------------------------------------------------
 
 function pad(n) {
-    return n < 10 ? '0' + n : n; 
+    return n < 10 ? '0' + n : n;
 }
 
 function getISODateString(date) {
@@ -83,10 +84,51 @@ function renderWithTemplate(defaultTemplate) {
             env: config.env,
             page: file.page,
             content: file.contents.toString()
-        };            
+        };
         file.contents = new Buffer(tpl(data), 'utf8');
         this.push(file);
         cb();
+    });
+}
+
+// Inspired by http://blog.crushingpennies.com/a-static-site-generator-with-gulp-proseio-and-travis-ci.html
+function collectPosts() {
+    var posts = [];
+    var tags = [];
+    var categories = [];
+
+    // TODO Add categories
+
+    return through.obj(function (file, enc, cb) {
+        // TODO Let the file path be defined by the config and split the date
+        file.page.url = 'posts/' + path.basename(file.path, '.md');
+
+        if (file.page.tags) {
+            file.page.tags.forEach(function (tag) {
+                if (tags.indexOf(tag) === -1) {
+                    tags.push(tag);
+                }
+            });
+        }
+
+        file.page.category = file.page.category || config.env.defaultCategory;
+        if (categories.indexOf(file.page.category) === -1) {
+            categories.push(file.page.catgory);
+        }
+
+        posts.push(file.page);
+
+        this.push(file);
+        cb();
+    },
+    function (callback) {
+        posts.sort(function (a, b) {
+            return b.date - a.date;
+        });
+        config.site.posts = posts;
+        config.site.tags = tags;
+        config.site.categories = categories;
+        callback();
     });
 }
 
@@ -99,7 +141,7 @@ gulp.task('build-scripts', function () {
         .pipe(jshint('.jshintrc'))
         .pipe(jshint.reporter(stylish))
         .pipe(config.env.compressScripts ? uglify() : gutil.noop());
-    
+
     return mergeStream(vendorScriptStream, projectScriptStream)
         .pipe(plumber())
         .pipe(order([].concat(config.env.vendorScripts).concat(config.env.projectScripts), {base: process.cwd()}))
@@ -133,8 +175,16 @@ gulp.task('build-static', function () {
         .pipe(livereload());
 });
 
-gulp.task('build-pages', function () {
-    return gulp.src([config.source.content + '/**/*.md'])
+gulp.task('build-posts', function () {
+    return gulp.src([config.source.content + '/posts/**/*.md'])
+        .pipe(frontMatter({property: 'page', remove: true}))
+        .pipe(collectPosts())
+        .pipe(renderWithTemplate('layouts/post.html'))
+        .pipe(gulp.dest(config.target.project))
+});
+
+gulp.task('build-pages', ['build-posts'], function () {
+    return gulp.src([config.source.content + '/pages/**/*.md'])
         .pipe(frontMatter({property: 'page', remove: true}))
         .pipe(renderWithTemplate('layouts/page.html'))
         .pipe(rename({extname: '.html'}))
@@ -149,7 +199,12 @@ gulp.task('clean', function() {
 });
 
 gulp.task('build', ['clean'], function () {
-    return gulp.start('build-static', 'build-styles', 'build-scripts', 'build-pages');
+    return gulp.start(
+        'build-static', 
+        'build-styles', 
+        'build-scripts', 
+        'build-pages'
+    );
 });
 
 gulp.task('default', function () {
