@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <title>{{ title }}</title>
+    {% if env.debug %}<script src="http://localhost:35729/livereload.js"></script>{% endif %}
 </head>
 <body>
     <header>
@@ -12,7 +13,7 @@
     <main role="main">
         {% block main %}
             {{ content|raw }}
-        {% endblock %}	
+        {% endblock %}    
     </main>
     <footer>
     {% block footer %}
