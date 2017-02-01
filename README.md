@@ -1,2 +1,5 @@
-# prototype-boilerplate
-A boilerplate to prototype a website.
+
+Boilerplate: Static prototype
+================================================================================
+
+This is a simple boilerplate to start prototyping a site quickly.
