@@ -40,8 +40,8 @@ gutil.env.env = gutil.env.env || "development";
 config.env = {
    name: gutil.env.env,
    debug: gutil.env.env === 'development',
-   compressScripts: true,
-   compressStyles: true,
+   compressScripts: gutil.env.env !== 'development',
+   compressStyles: gutil.env.env !== 'development',
    renderOnlyChangedFiles: false,
    defaultTemplate: 'layouts/page.html',
    vendorScripts: [
