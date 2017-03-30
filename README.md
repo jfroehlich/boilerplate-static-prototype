@@ -3,6 +3,7 @@ Boilerplate: Static prototype
 ================================================================================
 
 This is a simple boilerplate to start prototyping a site quickly.
+Don't clone this project but export it and use it as a base.
 
 ## Installation
 
