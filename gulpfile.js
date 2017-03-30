@@ -22,6 +22,7 @@ var del = require('del');
 var nunjucks = require('nunjucks');
 var through = require('through2');
 var path = require('path');
+var filter = require('gulp-filter');
 
 // --- Config setup ------------------------------------------------------------
 
@@ -43,13 +44,7 @@ config.env = {
    compressScripts: gutil.env.env !== 'development',
    compressStyles: gutil.env.env !== 'development',
    renderOnlyChangedFiles: false,
-   defaultTemplate: 'layouts/page.html',
-   vendorScripts: [
-       // config.source.assets + 'vendor/jquery/dist/jquery.min.js'
-   ],
-   projectScripts: [
-       config.source.assets + 'main.js'
-   ]
+   defaultTemplate: 'layouts/page.html'
 };
 
 config.target = {
@@ -99,23 +94,28 @@ function renderWithTemplate() {
 // --- Build Tasks -------------------------------------------------------------
 
 gulp.task('build-scripts', function () {
-   var vendorScriptStream = gulp.src(config.env.vendorScripts);
-   var projectScriptStream = gulp.src(config.env.projectScripts)
-       .pipe(plumber())
-       .pipe(jshint('.jshintrc'))
-       .pipe(jshint.reporter(stylish))
-       .pipe(config.env.compressScripts ? uglify() : gutil.noop());
-
-   return mergeStream(vendorScriptStream, projectScriptStream)
-       .pipe(plumber())
-       .pipe(order([].concat(config.env.vendorScripts).concat(config.env.projectScripts), {base: process.cwd()}))
-       .pipe(concat('main.js'))
-       .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> scripts - <%= date %> */\n', {
-           config: config,
-           date: getISODateString(new Date())
-       }))
-       .pipe(gulp.dest(config.target.assets))
-       .pipe(livereload());
+    var bundles = Object.keys(config.site.scriptBundles);
+    var merged = mergeStream();
+    bundles.forEach(function (bundleName) {
+        var projScripts = filter([config.source.assets + '**/*.js'], {restore: true});
+        var scripts = config.site.scriptBundles[bundleName];
+        var stream = gulp.src(scripts)
+            .pipe(plumber())
+            .pipe(projScripts)
+            .pipe(jshint('.jshintrc'))
+            .pipe(jshint.reporter(stylish))
+            .pipe(config.env.compressScripts ? uglify() : gutil.noop())
+            .pipe(projScripts.restore)
+            .pipe(order(scripts), {base: process.cwd()})
+            .pipe(concat(bundleName))
+            .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> scripts - <%= date %> */\n', {
+                config: config,
+                date: getISODateString(new Date())
+            }))
+            .pipe(gulp.dest(config.target.assets));
+        merged.add(stream);
+    });
+    merged.pipe(livereload());
 });
 
 gulp.task('build-styles', function () {

@@ -1,2 +1,10 @@
 {
+	"scriptBundles": {
+		"main.js": [
+			"**/source/assets/main.js"
+		]
+	},
+
+	"siteRoot": "/",
+	"assetsPath": "/assets"
 }
