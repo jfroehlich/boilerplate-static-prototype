@@ -10,7 +10,6 @@ var consolidate = require('consolidate');
 var path = require('path');
 var through = require('through2')
 var fs = require('fs');
-var gulp = require("gulp");
 var gutil = require('gulp-util');
 var jshint = require('gulp-jshint');
 var sass = require('gulp-sass');
@@ -23,13 +22,18 @@ var markdown = require('gulp-markdown');
 var gulpIf = require('gulp-if');
 var htmlmin = require('gulp-htmlmin');
 
-var config = require('./config.json');
-config.debug = gutil.env.type !== 'production'
-config.site.url = config.debug ? 'http://localhost:3000' : config.site.url;
+var gulp = require('gulp-help')(require('gulp'), {
+	hideEmpty: true,
+	hideDepsMessage: true,
+	aliases: ['default'],
+	afterPrintCallback: function () {
+		console.log('Information about customization is in the README.\n');
+	}
+});
 
-if (config.debug === false) {
-	gutil.log("This is a production run.");
-}
+var config = require('./config.json');
+config.debug = !!gutil.env.production;
+config.site.url = config.debug ? 'http://localhost:3000' : config.site.url;
 
 function wrapTemplate(options) {
 	options.engine = options.engine || 'nunjucks';
@@ -56,19 +60,12 @@ function wrapTemplate(options) {
 
 // --- Management methods ---
 
-/**
- * Registers the build task as default.
- *
-
- */
-gulp.task('default', function () {
-
-});
+gulp.task('default', false, ['help']);
 
 /**
  * Runs all the linting tasks.
  */
-gulp.task('lint', function () {
+gulp.task('lint', 'Runs all linting tasks.', function () {
 	return gulp.start(
 		'lint-styles',
 		'lint-scripts',
@@ -85,7 +82,11 @@ gulp.task('lint', function () {
  * If you want a production run do use this:
  * 		gulp build --type=production
  */
-gulp.task('build', ['clean'], function () {
+gulp.task('build', "Runs a full build of the project.", ['clean'], function () {
+	if (config.debug === false) {
+		gutil.log("This is a production run.");
+	}
+
 	return gulp.start(
 		'build-styles',
 		'build-scripts',
@@ -94,16 +95,20 @@ gulp.task('build', ['clean'], function () {
 		'build-pages',
 		'build-uploads'
 	);
+}, {
+	options: {
+		'production': "Does a production build with compressed output."
+	}
 });
 
 /**
  * Removes everything in the target folder.
  */
-gulp.task('clean', function () {
+gulp.task('clean', "Removes everything in the target path.", function () {
 	return del([config.target + '**/*']);
 });
 
-gulp.task('watch', ['build'], function() {
+gulp.task('watch', "Runs a full build and keeps watching the target path.", ['build'], function() {
 	if (config.debug === false) {
 		gutil.log("Don't use 'watch' in production mode. Always do a clean build ahead of deployment.");
 	}
