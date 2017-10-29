@@ -1,0 +1,23 @@
+{
+	"base": {
+		"assets": "source/"
+	},
+	"source": {
+		"assets": "source/assets/",
+		"vendor": "source/assets/vendor/",
+		"uploads": "source/uploads/",
+		"templates": "source/templates/",
+		"content": "source/content/"
+	},
+	"target": "web/",
+	"browserSync": {
+		"open": "local",
+		"server": "web/"
+	},
+	"site": {
+		"name": "Example Inc",
+		"url": "https://example.com",
+		"basePath": "/",
+		"assetsPath": "/assets/"
+	}
+}

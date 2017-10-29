@@ -1,24 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
+    {% block head %}
     <meta charset="utf-8" />
     <title>{{ title }}</title>
-    {% if env.debug %}<script src="http://localhost:35729/livereload.js"></script>{% endif %}
+    <script type="text/javascript">document.documentElement.className=document.documentElement.className.replace("no-js","js");</script>
+    <link rel="stylesheet" href="{{ site.assetsPath }}main.css" />
+    {% block extra_head %}{% endblock %}
+    {% endblock %}
 </head>
 <body>
+    {% block header %}
     <header>
-        {% block header %}
-        {% endblock %}
     </header>
+    {% endblock %}
+    {% block main %}
     <main role="main">
-        {% block main %}
-            {{ content|safe }}
-        {% endblock %}
+        {{ content|safe }}
     </main>
-    <footer>
+    {% endblock %}
     {% block footer %}
-        {% endblock %}
+    <footer>
     </footer>
-    <script type="text/javascript" src="{{ site.assetsPath }}/main.js"></script>
+    {% endblock %}
+    <script type="text/javascript" src="{{ site.assetsPath }}main.js"></script>
 </body>
 </html>

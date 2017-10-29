@@ -1,51 +1,56 @@
 {
-  "name": "boilerplate-static-prototype",
+  "name": "PROJECT_NAME",
   "version": "1.0.0",
-  "description": "A boilerplate to prototype websites.",
+  "description": "PROJECT_DESCRIPTION",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "help": "gulp help",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "gulp lint",
+    "start": "gulp watch",
+    "build": "gulp build --production",
+    "clean": "gulp clean"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jfroehlich/boilerplate-static-prototype.git"
+    "url": "git+PROJECT_GIT_URL"
   },
   "keywords": [
     "website",
     "prototype",
     "boilerplate"
   ],
-  "author": "Johannes Froehlich (http://jfroehlich.net/)",
+  "author": "PROJECT_AUTHOR_NAME_AND_EMAIL",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/jfroehlich/boilerplate-static-prototype/issues"
+    "url": "PROJECT_BUGS_URL"
   },
-  "homepage": "https://github.com/jfroehlich/boilerplate-static-prototype#readme",
+  "homepage": "PROJECT_HOMEPAGE_URL",
   "devDependencies": {
-    "del": "^2.2.2",
-    "gulp": "^3.9.0",
-    "gulp-changed": "^1.3.0",
-    "gulp-clean-css": "^3.0.2",
-    "gulp-concat": "^2.6.0",
-    "gulp-connect": "^5.0.0",
-    "gulp-data": "^1.2.1",
-    "gulp-filter": "^5.0.0",
-    "gulp-front-matter": "^1.2.3",
-    "gulp-header": "^1.2.2",
+    "browser-sync": "^2.18.13",
+    "browserify": "^14.5.0",
+    "consolidate": "^0.14.5",
+    "del": "^3.0.0",
+    "fs": "0.0.1-security",
+    "gulp": "^3.9.1",
+    "gulp-clean-css": "^3.9.0",
+    "gulp-front-matter": "^1.3.0",
+    "gulp-help": "^1.6.1",
+    "gulp-htmlmin": "^3.0.0",
+    "gulp-if": "^2.0.2",
     "gulp-jshint": "^2.0.4",
-    "gulp-livereload": "^3.8.0",
     "gulp-markdown": "^1.2.0",
-    "gulp-order": "^1.1.1",
-    "gulp-plumber": "^1.0.1",
-    "gulp-replace": "^0.5.4",
     "gulp-sass": "^3.1.0",
-    "gulp-sourcemaps": "^2.4.0",
-    "gulp-uglify": "^2.0.1",
-    "gulp-util": "^3.0.6",
-    "jshint": "^2.9.4",
-    "jshint-stylish": "^2.0.1",
-    "merge-stream": "^1.0.0",
-    "nunjucks": "^3.0.0",
-    "through2": "^2.0.0"
+    "gulp-sourcemaps": "^2.6.1",
+    "gulp-tap": "^1.0.1",
+    "gulp-uglify": "^3.0.0",
+    "gulp-util": "^3.0.8",
+    "jshint": "^2.9.5",
+    "jshint-stylish": "^2.2.1",
+    "nunjucks": "^3.0.1",
+    "path": "^0.12.7",
+    "through2": "^2.0.3",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0"
   }
 }

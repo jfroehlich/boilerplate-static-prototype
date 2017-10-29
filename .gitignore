@@ -5,6 +5,4 @@ logs
 # Tempfiles
 *.swp
 
-builds/development
-node_modules
-source/assets/vendor
+node_modules/

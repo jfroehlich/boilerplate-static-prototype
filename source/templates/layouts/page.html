@@ -1,6 +1,8 @@
-{% extends "../base.html" %}
+{% extends "base.html" %}
 
 {% block main %}
+<main role="main">
 	{{ page.headline }}
-    {{ content|safe }}
+	{{ content|safe }}
+</main>
 {% endblock%}
