@@ -1,197 +1,213 @@
-// jshint node:true
-'use strict';
 
-var gulp = require('gulp');
-var gutil = require('gulp-util');
-var livereload = require('gulp-livereload');
-var header = require('gulp-header');
-var concat = require('gulp-concat');
-var cleanCSS = require('gulp-clean-css');
-var sass = require('gulp-sass');
-var plumber = require('gulp-plumber');
-var mergeStream = require('merge-stream');
-var jshint = require('gulp-jshint');
-var stylish = require('jshint-stylish');
-var order = require('gulp-order');
-var changed = require('gulp-changed');
-var uglify = require('gulp-uglify');
-var frontMatter = require('gulp-front-matter');
-var connect = require('gulp-connect');
-var markdown = require('gulp-markdown');
 var del = require('del');
+var stylish = require('jshint-stylish');
+var source = require('vinyl-source-stream');
+var buffer = require('vinyl-buffer');
+var browserify = require('browserify');
+var browserSync = require('browser-sync').create();
 var nunjucks = require('nunjucks');
-var through = require('through2');
+var consolidate = require('consolidate');
 var path = require('path');
-var filter = require('gulp-filter');
+var through = require('through2')
+var fs = require('fs');
+var gulp = require("gulp");
+var gutil = require('gulp-util');
+var jshint = require('gulp-jshint');
+var sass = require('gulp-sass');
+var cleanCSS = require('gulp-clean-css');
+var uglify = require('gulp-uglify');
+var sourcemaps = require('gulp-sourcemaps');
+var tap = require('gulp-tap');
+var frontMatter = require('gulp-front-matter');
+var markdown = require('gulp-markdown');
+var gulpIf = require('gulp-if');
+var htmlmin = require('gulp-htmlmin');
 
-// --- Config setup ------------------------------------------------------------
+var config = require('./config.json');
+config.debug = gutil.env.type !== 'production'
+config.site.url = config.debug ? 'http://localhost:3000' : config.site.url;
 
-var config = {
-   pkg: require('./package.json'),
-   site: require('./site.json'),
-   source: {
-       assets: 'source/assets/',
-       templates: 'source/templates/',
-       content: 'source/content/'
-   }
-};
-
-// TODO Move this into an file with environment settings
-gutil.env.env = gutil.env.env || "development";
-config.env = {
-   name: gutil.env.env,
-   debug: gutil.env.env === 'development',
-   compressScripts: gutil.env.env !== 'development',
-   compressStyles: gutil.env.env !== 'development',
-   renderOnlyChangedFiles: false,
-   defaultTemplate: 'layouts/page.html'
-};
-
-config.target = {
-   project: 'builds/' + config.env.name + '/',
-   assets: 'builds/' + config.env.name + '/assets/'
-};
-
-nunjucks.configure(config.source.templates, {
-   autoescape: true,
-   throwOnUndefined: false,
-   trimBlocks: true,
-   lstripBlocks: false,
-   noCache: true
-});
-
-// --- Library methods ---------------------------------------------------------
-
-function pad(n) {
-   return n < 10 ? '0' + n : n;
+if (config.debug === false) {
+	gutil.log("This is a production run.");
 }
 
-function getISODateString(date) {
-   return date.getFullYear() +
-       '-' + pad(date.getMonth() + 1) +
-       '-' + pad(date.getDate());
+function wrapTemplate(options) {
+	options.engine = options.engine || 'nunjucks';
+	if (options.requires) {
+		consolidate.requires[options.engine] = options.requires;
+	}
+
+	return through.obj(function (file, enc, cb) {
+		var template = typeof options.template === 'function' ? options.template(file) : options.template;
+		var data = typeof options.data === 'function' ? options.data(file) : options.data;
+		var templatePath =  path.join(__dirname, options.templateRoot, template);
+		var self = this;
+
+		data.content = file.contents.toString();
+		consolidate[options.engine](templatePath, data).then(function (html) {
+			file.contents = new Buffer(html, 'utf8');
+			self.push(file);
+			cb();
+		}).catch(function (err) {
+			throw err;
+		});
+	});
 }
 
-function renderWithTemplate() {
-   return through.obj(function (file, enc, cb) {
-       var templateFile =  path.join(__dirname, config.source.templates, file.page.layout || config.env.defaultTemplate);
-       var data = {
-           site: config.site,
-           env: config.env,
-           page: file.page,
-           content: file.contents.toString()
-       };
-       var content = nunjucks.render(templateFile, data);
-       var extension = data.page.filetype ? '.'  + data.page.filetype : path.extname(templateFile);
+// --- Management methods ---
 
-       file.contents = new Buffer(content, 'utf8');
-       file.path = gutil.replaceExtension(file.path, extension);
-       this.push(file);
-       cb();
-   });
-}
+/**
+ * Registers the build task as default.
+ *
 
-// --- Build Tasks -------------------------------------------------------------
-
-gulp.task('build-scripts', function () {
-    var bundles = Object.keys(config.site.scriptBundles);
-    var merged = mergeStream();
-    bundles.forEach(function (bundleName) {
-        var projScripts = filter([config.source.assets + '**/*.js'], {restore: true});
-        var scripts = config.site.scriptBundles[bundleName];
-        var stream = gulp.src(scripts)
-            .pipe(plumber())
-            .pipe(projScripts)
-            .pipe(jshint('.jshintrc'))
-            .pipe(jshint.reporter(stylish))
-            .pipe(config.env.compressScripts ? uglify() : gutil.noop())
-            .pipe(projScripts.restore)
-            .pipe(order(scripts), {base: process.cwd()})
-            .pipe(concat(bundleName))
-            .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> scripts - <%= date %> */\n', {
-                config: config,
-                date: getISODateString(new Date())
-            }))
-            .pipe(gulp.dest(config.target.assets));
-        merged.add(stream);
-    });
-    merged.pipe(livereload());
-});
-
-gulp.task('build-styles', function () {
-   return gulp.src([config.source.assets + '**/*.scss', '!' + config.source.assets + '**/_*.scss'])
-       .pipe(plumber())
-       .pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
-       .pipe(config.env.compressStyles ? cleanCSS({keepBreaks: true, mediaMerging: true, sourceMap: true}) : gutil.noop())
-       .pipe(header('/* <%= config.pkg.name %> - <%= config.env.name %> styles - <%= date %> */\n', {
-           config: config,
-           date: getISODateString(new Date())
-       }))
-       .pipe(gulp.dest(config.target.assets))
-       .pipe(livereload());
-});
-
-gulp.task('build-static', function () {
-   return gulp.src([config.source.assets + '/**/*.{gif,jpg,png,pdf,woff,ttf,eot}'])
-       .pipe(plumber())
-       .pipe(changed(config.target.assets))
-       .pipe(gulp.dest(config.target.assets))
-       .pipe(livereload());
-});
-
-gulp.task('build-pages', function () {
-   return gulp.src([config.source.content + '/**/*.md'])
-       .pipe(frontMatter({property: 'page', remove: true}))
-       .pipe(config.env.renderOnlyChangedFiles ? changed(config.target.project, {extension: '.html'}) : gutil.noop())
-       .pipe(markdown())
-       .pipe(renderWithTemplate())
-       .pipe(gulp.dest(config.target.project))
-       .pipe(livereload());
-});
-
-// --- Management Tasks -----------------------------------------------------------
-
-gulp.task('clean', function() {
-   return del(config.target.project + '**/*');
-});
-
-gulp.task('build', ['clean'], function () {
-   return gulp.start(
-       'build-static',
-       'build-styles',
-       'build-scripts',
-       'build-pages'
-   );
-});
-
+ */
 gulp.task('default', function () {
-   return gulp.start('build');
+
 });
 
-gulp.task('serve', function() {
-   if (config.env.name !== 'development') {
-       console.log('Development in production mode is discouraged.');
-       return;
-   }
-   connect.server({
-       port: 8000,
-       root: config.target.project,
-       livereload: false
-   });
+/**
+ * Runs all the linting tasks.
+ */
+gulp.task('lint', function () {
+	return gulp.start(
+		'lint-styles',
+		'lint-scripts',
+		'lint-templates'
+	);
 });
 
-gulp.task('develop', ['build', 'serve'], function () {
-   if (config.env.name !== 'development') {
-       console.log('Development in production mode is discouraged.');
-       return;
-   }
+/**
+ * Runs a full build of the project.
+ *
+ * Cleans the destination folder before building the project. Linting is done
+ * by each build task individually.
+ *
+ * If you want a production run do use this:
+ * 		gulp build --type=production
+ */
+gulp.task('build', ['clean'], function () {
+	return gulp.start(
+		'build-styles',
+		'build-scripts',
+		'build-images',
+		'build-fonts',
+		'build-pages',
+		'build-uploads'
+	);
+});
 
-   livereload({port: 35729, start: true, liveCSS: false, liveJS: false});
+/**
+ * Removes everything in the target folder.
+ */
+gulp.task('clean', function () {
+	return del([config.target + '**/*']);
+});
 
-   gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
-   gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
-   gulp.watch(config.source.assets + '**/*.{gif,jpg,png,pdf,woff,ttf,eot}', ['build-static']);
-   gulp.watch(config.source.content + '**/*.md', ['build-pages']);
-   gulp.watch(config.source.templates + '**/*', ['build-pages']);
+gulp.task('watch', ['build'], function() {
+	if (config.debug === false) {
+		gutil.log("Don't use 'watch' in production mode. Always do a clean build ahead of deployment.");
+	}
 
+	browserSync.init(config.browserSync);
+
+	gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
+	gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
+	gulp.watch(config.source.assets + '**/*.{png,jpg,gif,svg}', ['build-images']);
+	gulp.watch(config.source.assets + '**/*.{ttf,otf,eot,woff,woff2}', ['build-fonts']);
+	gulp.watch(config.source.uploads + '**/*', ['build-uploads']);
+	gulp.watch(config.source.content + '**/*', ['build-pages']);
+	gulp.watch(config.source.templates + '**/*', ['build-pages']);
+});
+
+// --- Linting tasks ---
+
+gulp.task('lint-scripts', function () {
+	return gulp.src([config.source.assets + '**/*.js', '!' + config.source.vendor + '**/*.js'])
+		.pipe(jshint('.jshintrc'))
+		.pipe(jshint.reporter(stylish));
+});
+
+gulp.task('lint-styles', function () {
+	gutil.log("Linting styles is not implemented yet.");
+	// TODO Implement lint-styles task
+});
+
+gulp.task('lint-templates', function () {
+	gutil.log('Linting templates is not implemented yet.');
+	// TODO Implement lint-styles task
+});
+
+// --- Build tasks ---
+
+gulp.task('build-scripts', ['lint-scripts'], function () {
+	return gulp.src(config.source.assets + '*.js', {base: config.base.assets, read: false})
+		.pipe(tap(function (file) {
+			file.contents = browserify(file.path, {debug: config.debug}).bundle();
+		}))
+		.pipe(buffer())
+		.pipe(config.debug ? sourcemaps.init({loadMaps: true}) : gutil.noop())
+		.pipe(config.debug ? gutil.noop() : uglify()).on('error', gutil.log)
+		.pipe(config.debug ? sourcemaps.write('./') : gutil.noop())
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream());
+});
+
+gulp.task('build-styles', ['lint-styles'], function () {
+	return gulp.src([config.source.assets + '**/*.scss'], {base: config.base.assets})
+		.pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
+		.pipe(config.debug ? gutil.noop() : cleanCSS({compatibility: 'ie9', format: 'keep-breaks'}))
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream({match: '**/*.css'}));
+});
+
+gulp.task('build-images', function () {
+	return gulp.src([config.source.assets + '**/*.{png,jpg,gif,svg}'], {base: config.base.assets})
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream());
+});
+
+gulp.task('build-uploads', function () {
+	return gulp.src([config.source.uploads + '**/*'], {base: config.base.assets})
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream());
+});
+
+gulp.task('build-fonts', function () {
+	return gulp.src([config.source.assets + '**/*.{ttf,otf,eot,woff,woff2}'], {base: config.base.assets})
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream());
+});
+
+gulp.task('build-pages', ['lint-templates'], function () {
+	return gulp.src([config.source.content + '**/*'])
+		.pipe(frontMatter({property: 'page', remove: true}))
+		.pipe(gulpIf(function (file) {
+			return file.path.match(/(\.md|\.markdown)$/) !== null;
+		}, markdown()))
+		.pipe(gulpIf(function (file) {
+			return !!file.page.layout;
+		}, wrapTemplate({
+			template: function (file) {return file.page.layout;},
+			data: function (file) {return {page: file.page, site: config.site}},
+			engine: 'nunjucks',
+			templateRoot: config.source.templates,
+			requires: nunjucks.configure(path.join(__dirname, config.source.templates), {
+				autoescape: true,
+				throwOnUndefined: false,
+				trimBlocks: false,
+				trimBlocks: false,
+				noCache: true
+			})
+		})))
+		.pipe(gulpIf(function (file) {
+			return file.path.match(/(\.html)$/) !== null && !config.debug;
+		}, htmlmin({
+			collapseWhitespace: true,
+			preserveLineBreaks: false,
+			keepClosingSlash: true,
+			removeComments: true,
+			removeAttributeQuotes: false
+		})))
+		.pipe(gulp.dest(config.target))
+		.pipe(browserSync.stream());
 });
