@@ -4,8 +4,12 @@
   "description": "PROJECT_DESCRIPTION",
   "private": true,
   "scripts": {
+    "help": "gulp help",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "gulp watch"
+    "lint": "gulp lint",
+    "start": "gulp watch",
+    "build": "gulp build --production",
+    "clean": "gulp clean"
   },
   "repository": {
     "type": "git",
