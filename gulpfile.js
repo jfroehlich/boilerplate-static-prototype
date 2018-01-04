@@ -32,7 +32,7 @@ var gulp = require('gulp-help')(require('gulp'), {
 });
 
 var config = require('./config.json');
-config.debug = !!gutil.env.production;
+config.debug = !!gutil.env.production === false;
 config.site.url = config.debug ? 'http://localhost:3000' : config.site.url;
 
 function wrapTemplate(options) {
@@ -190,7 +190,7 @@ gulp.task('build-pages', ['lint-templates'], function () {
 			return file.path.match(/(\.md|\.markdown)$/) !== null;
 		}, markdown()))
 		.pipe(gulpIf(function (file) {
-			return !!file.page.layout;
+			return !file.isDirectory() && !!file.page.layout;
 		}, wrapTemplate({
 			template: function (file) {return file.page.layout;},
 			data: function (file) {return {page: file.page, site: config.site}},
