@@ -1,26 +1,28 @@
 
-var del = require('del');
-var stylish = require('jshint-stylish');
-var source = require('vinyl-source-stream');
-var buffer = require('vinyl-buffer');
-var browserify = require('browserify');
-var browserSync = require('browser-sync').create();
-var nunjucks = require('nunjucks');
-var consolidate = require('consolidate');
-var path = require('path');
-var through = require('through2')
-var fs = require('fs');
-var gutil = require('gulp-util');
-var jshint = require('gulp-jshint');
-var sass = require('gulp-sass');
-var cleanCSS = require('gulp-clean-css');
-var uglify = require('gulp-uglify');
-var sourcemaps = require('gulp-sourcemaps');
-var tap = require('gulp-tap');
-var frontMatter = require('gulp-front-matter');
-var markdown = require('gulp-markdown');
-var gulpIf = require('gulp-if');
-var htmlmin = require('gulp-htmlmin');
+const del = require('del');
+const stylish = require('jshint-stylish');
+const source = require('vinyl-source-stream');
+const buffer = require('vinyl-buffer');
+const log = require('fancy-log');
+const browserify = require('browserify');
+const browserSync = require('browser-sync').create();
+const nunjucks = require('nunjucks');
+const consolidate = require('consolidate');
+const path = require('path');
+const through = require('through2')
+const jshint = require('gulp-jshint');
+const sass = require('gulp-sass');
+const cleanCSS = require('gulp-clean-css');
+const uglify = require('gulp-uglify');
+const sourcemaps = require('gulp-sourcemaps');
+const minimist = require('minimist');
+const tap = require('gulp-tap');
+const frontMatter = require('gulp-front-matter');
+const markdown = require('gulp-markdown');
+const gulpIf = require('gulp-if');
+const htmlmin = require('gulp-htmlmin');
+const ttf2woff = require('gulp-ttf2woff');
+const ttf2woff2 = require('gulp-ttf2woff2');
 
 var gulp = require('gulp-help')(require('gulp'), {
 	hideEmpty: true,
@@ -32,7 +34,7 @@ var gulp = require('gulp-help')(require('gulp'), {
 });
 
 var config = require('./config.json');
-config.debug = !!gutil.env.production === false;
+config.debug = !!minimist(process.argv.slice(2)).production === false;
 config.site.url = config.debug ? 'http://localhost:3000' : config.site.url;
 
 function wrapTemplate(options) {
@@ -49,9 +51,15 @@ function wrapTemplate(options) {
 
 		data.content = file.contents.toString();
 		consolidate[options.engine](templatePath, data).then(function (html) {
-			file.contents = new Buffer(html, 'utf8');
-			self.push(file);
-			cb();
+			file.contents = Buffer.from(html, 'utf8');
+			
+			// change extension to the extension of the template file
+			// TODO Create an option to also change the extension when the template is generically named (.html.njk)
+			var filename = path.basename(file.path, path.extname(file.path)) + path.extname(templatePath);
+			file.path = path.join(path.dirname(file.path), filename)
+			
+			//self.push(file);
+			cb(null, file);
 		}).catch(function (err) {
 			throw err;
 		});
@@ -84,16 +92,16 @@ gulp.task('lint', 'Runs all linting tasks.', function () {
  */
 gulp.task('build', "Runs a full build of the project.", ['clean'], function () {
 	if (config.debug === false) {
-		gutil.log("This is a production run.");
+		log("This is a production run.");
 	}
 
 	return gulp.start(
 		'build-styles',
 		'build-scripts',
 		'build-images',
-		'build-fonts',
 		'build-pages',
-		'build-uploads'
+		'build-uploads',
+		'build-fonts'
 	);
 }, {
 	options: {
@@ -110,14 +118,14 @@ gulp.task('clean', "Removes everything in the target path.", function () {
 
 gulp.task('watch', "Runs a full build and keeps watching the target path.", ['build'], function() {
 	if (config.debug === false) {
-		gutil.log("Don't use 'watch' in production mode. Always do a clean build ahead of deployment.");
+		log("Don't use 'watch' in production mode. Always do a clean build ahead of deployment.");
 	}
 
 	browserSync.init(config.browserSync);
 
 	gulp.watch(config.source.assets + '**/*.scss', ['build-styles']);
 	gulp.watch(config.source.assets + '**/*.js', ['build-scripts']);
-	gulp.watch(config.source.assets + '**/*.{png,jpg,gif,svg}', ['build-images']);
+	gulp.watch(config.source.assets + '**/*.{png,jpg,gif,svg,webp}', ['build-images']);
 	gulp.watch(config.source.assets + '**/*.{ttf,otf,eot,woff,woff2}', ['build-fonts']);
 	gulp.watch(config.source.uploads + '**/*', ['build-uploads']);
 	gulp.watch(config.source.content + '**/*', ['build-pages']);
@@ -133,12 +141,12 @@ gulp.task('lint-scripts', function () {
 });
 
 gulp.task('lint-styles', function () {
-	gutil.log("Linting styles is not implemented yet.");
+	log("Linting styles is not implemented yet.");
 	// TODO Implement lint-styles task
 });
 
 gulp.task('lint-templates', function () {
-	gutil.log('Linting templates is not implemented yet.');
+	log('Linting templates is not implemented yet.');
 	// TODO Implement lint-styles task
 });
 
@@ -150,9 +158,9 @@ gulp.task('build-scripts', ['lint-scripts'], function () {
 			file.contents = browserify(file.path, {debug: config.debug}).bundle();
 		}))
 		.pipe(buffer())
-		.pipe(config.debug ? sourcemaps.init({loadMaps: true}) : gutil.noop())
-		.pipe(config.debug ? gutil.noop() : uglify()).on('error', gutil.log)
-		.pipe(config.debug ? sourcemaps.write('./') : gutil.noop())
+		.pipe(config.debug ? sourcemaps.init({loadMaps: true}) : through.obj())
+		.pipe(config.debug ? through.obj() : uglify()).on('error', log)
+		.pipe(config.debug ? sourcemaps.write('./') : through.obj())
 		.pipe(gulp.dest(config.target))
 		.pipe(browserSync.stream());
 });
@@ -160,13 +168,13 @@ gulp.task('build-scripts', ['lint-scripts'], function () {
 gulp.task('build-styles', ['lint-styles'], function () {
 	return gulp.src([config.source.assets + '**/*.scss'], {base: config.base.assets})
 		.pipe(sass({outputStyle: 'expanded'}).on('error', sass.logError))
-		.pipe(config.debug ? gutil.noop() : cleanCSS({compatibility: 'ie9', format: 'keep-breaks'}))
+		.pipe(config.debug ? through.obj() : cleanCSS({compatibility: 'ie9', format: 'keep-breaks'}))
 		.pipe(gulp.dest(config.target))
 		.pipe(browserSync.stream({match: '**/*.css'}));
 });
 
 gulp.task('build-images', function () {
-	return gulp.src([config.source.assets + '**/*.{png,jpg,gif,svg}'], {base: config.base.assets})
+	return gulp.src([config.source.assets + '**/*.{png,jpg,gif,svg,webp}'], {base: config.base.assets})
 		.pipe(gulp.dest(config.target))
 		.pipe(browserSync.stream());
 });
@@ -178,7 +186,9 @@ gulp.task('build-uploads', function () {
 });
 
 gulp.task('build-fonts', function () {
-	return gulp.src([config.source.assets + '**/*.{ttf,otf,eot,woff,woff2}'], {base: config.base.assets})
+	return gulp.src([config.source.assets + '**/*.{ttf,otf}'], {base: config.base.assets})
+		.pipe(ttf2woff({clone: true}))
+		.pipe(ttf2woff2({clone: true}))
 		.pipe(gulp.dest(config.target))
 		.pipe(browserSync.stream());
 });
@@ -188,7 +198,7 @@ gulp.task('build-pages', ['lint-templates'], function () {
 		.pipe(frontMatter({property: 'page', remove: true}))
 		.pipe(gulpIf(function (file) {
 			return file.path.match(/(\.md|\.markdown)$/) !== null;
-		}, markdown()))
+		}, markdown(config.markdown)))
 		.pipe(gulpIf(function (file) {
 			return !file.isDirectory() && !!file.page.layout;
 		}, wrapTemplate({
