@@ -1,0 +1,10 @@
+files:
+  include: 'source/assets/**/*.s+(a|c)ss'
+rules:
+  indentation: 2
+  quotes:
+    style: double
+  leading-zero:
+    - 2
+    - include: true
+

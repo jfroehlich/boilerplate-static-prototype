@@ -11,13 +11,33 @@
 	},
 	"target": "web/",
 	"browserSync": {
-		"open": "local",
+		"open": false,
 		"server": "web/"
+	},
+	"markdown": {
+		"gfm": true,
+		"tables": true,
+		"breaks": false,
+		"pedantic": true,
+		"sanitize": false,
+		"smartLists": true,
+		"smartypants": true
 	},
 	"site": {
 		"name": "Example Inc",
 		"url": "https://example.com",
 		"basePath": "/",
 		"assetsPath": "/assets/"
-	}
+	},
+    "reports": {
+        "urls": [
+            "https://example.com/"
+        ],
+        "chromeFlags": ["--headless"],
+        "lighthouseFlags": {
+            "output": "json"
+        },
+        "lighthouseConfig": null,
+        "target": "reports/"
+    }
 }
