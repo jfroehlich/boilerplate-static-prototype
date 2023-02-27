@@ -54,6 +54,6 @@
     "vinyl-source-stream": "^2.0.0"
   },
   "dependencies": {
-    "npm-check-updates": "^2.14.0"
+    "npm-check-updates": "^16.7.10"
   }
 }
